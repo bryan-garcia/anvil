@@ -214,3 +214,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Design review document (local notes, not tracked)
+SYSTEM_DESIGN_REVIEW.md
+
+# local dev
+.anvil
+uv.lock

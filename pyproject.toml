@@ -52,7 +52,7 @@ dependencies = [
 ]
 
 [project.scripts]
-anvil = "anvil.cli:main"
+anvil = "anvil.cli.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

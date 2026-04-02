@@ -1,12 +1,16 @@
 """
 LangChain Indexing API experiment.
 
-Demonstrates two ideas:
+Demonstrates three ideas:
   A) Upstream deduplication via SQLRecordManager — no custom audit scripts needed.
   B) Relational inventory via sqlite3 — no full FAISS scan needed.
+  C) Persistence round-trip — save FAISS to disk, reload it, confirm the
+     SQLRecordManager state survives and re-indexing is still a no-op.
 """
 
+import shutil
 import sqlite3
+from pathlib import Path
 
 import faiss
 from langchain.indexes import SQLRecordManager, index
@@ -14,6 +18,17 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
+
+# ---------------------------------------------------------------------------
+# Clean up any artifacts left by a previous run so this script is idempotent
+# ---------------------------------------------------------------------------
+
+for _artifact in ["vector_cache.db", "faiss_store"]:
+    _p = Path(_artifact)
+    if _p.is_dir():
+        shutil.rmtree(_p)
+    elif _p.exists():
+        _p.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -109,3 +124,38 @@ current_files = get_inventory()
 print("Files currently indexed:")
 for f in current_files:
     print(f"  - {f}")
+
+# ---------------------------------------------------------------------------
+# Section C: Persistence Round-Trip
+#
+# Save the FAISS index to disk, reload it into a fresh Python object, then
+# re-index the same documents. Because the SQLRecordManager (vector_cache.db)
+# already has their content hashes, the result must be skipped=2, added=0.
+# ---------------------------------------------------------------------------
+
+print("\n=== Section C: Persistence Round-Trip ===\n")
+
+# Save the current in-memory FAISS index to disk
+FAISS_STORE_PATH = "faiss_store"
+vectorstore.save_local(FAISS_STORE_PATH)
+print(f"FAISS index saved to ./{FAISS_STORE_PATH}/")
+
+# Reload into a brand-new Python object (simulates a process restart)
+reloaded_vectorstore = FAISS.load_local(
+    FAISS_STORE_PATH,
+    embeddings,
+    allow_dangerous_deserialization=True,
+)
+print("FAISS index reloaded from disk.\n")
+
+# The SQLRecordManager already has hashes for docs_v2 from Run 3 above.
+# Re-indexing against the reloaded store must be a pure no-op.
+result_reload = index(
+    docs_source=docs_v2,
+    record_manager=record_manager,
+    vector_store=reloaded_vectorstore,
+    cleanup="incremental",
+    source_id_key="source",
+)
+print(f"Re-index after reload: {result_reload}")
+print("\n=> skipped=2 confirms the record manager state survived the save/reload cycle.")

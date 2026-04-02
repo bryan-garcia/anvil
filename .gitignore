@@ -221,3 +221,35 @@ SYSTEM_DESIGN_REVIEW.md
 # local dev
 .anvil
 uv.lock
+
+# ---- Multi-language sandbox entries ----
+
+# Node.js / JavaScript / TypeScript
+node_modules/
+.next/
+.nuxt/
+dist/
+*.tsbuildinfo
+.turbo/
+
+# Rust
+target/
+Cargo.lock
+
+# Go
+bin/
+vendor/
+
+# Java / Kotlin / JVM
+*.class
+*.jar
+*.war
+.gradle/
+build/
+
+# General
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
